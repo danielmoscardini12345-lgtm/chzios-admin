@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHZIOS - Gerador de Keys</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#111; color:#fff; padding:20px; }
+    h1 { color:#ff3c3c; text-align:center; }
+    label { display:block; margin:10px 0 5px; }
+    input, select { width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:none; }
+    button { width:100%; padding:10px; background:#ff3c3c; border:none; border-radius:5px; color:#fff; font-weight:bold; cursor:pointer; }
+    button:hover { background:#cc2a2a; }
+    .log { margin-top:20px; background:#222; padding:10px; border-radius:5px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <h1>CHZIOS - Gerador de Keys</h1>
+  
+  <label>Key (nome)</label>
+  <input type="text" id="keyInput" placeholder="Ex: VIP001">
+
+  <label>Data de Expiração</label>
+  <input type="date" id="expInput">
+
+  <label>Status</label>
+  <select id="statusInput">
+    <option value="true">Ativa</option>
+    <option value="false">Desativada</option>
+  </select>
+
+  <button onclick="addKey()">Gerar Key</button>
+
+  <div class="log" id="log"></div>
+
+  <script>
+    const repoOwner = "danielmoscardini12345-lgtm"; // sua conta
+    const repoName = "chzios-keys"; // repositório onde fica o keys.json
+    const filePath = "keys.json";
+    const branch = "main";
+
+    // ⚠️ Coloque aqui seu token pessoal do GitHub
+    const token = "SEU_TOKEN_AQUI";
+
+    async function getKeys() {
+      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        headers: { Authorization: `token ${token}` }
+      });
+      const data = await res.json();
+      const content = atob(data.content);
+      return { keys: JSON.parse(content), sha: data.sha };
+    }
+
+    async function addKey() {
+      const { keys, sha } = await getKeys();
+
+      const key = document.getElementById("keyInput").value.trim();
+      const exp = document.getElementById("expInput").value;
+      const active = document.getElementById("statusInput").value === "true";
+
+      if (!key || !exp) {
+        log("⚠️ Preencha todos os campos!");
+        return;
+      }
+
+      keys.push({ key, expiresAt: new Date(exp).toISOString(), active });
+
+      const updatedContent = btoa(JSON.stringify(keys, null, 2));
+
+      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Adicionando key ${key}`,
+          content: updatedContent,
+          sha,
+          branch
+        })
+      });
+
+      if (res.ok) {
+        log(`✅ Key "${key}" adicionada com sucesso!`);
+      } else {
+        log("❌ Erro ao salvar key");
+      }
+    }
+
+    function log(msg) {
+      document.getElementById("log").innerText = msg;
+    }
+  </script>
+</body>
+</html>
